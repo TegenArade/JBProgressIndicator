@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="JBProgressIndicator">
+        <attr name="animatedBarColor" format="color"/>
+        <attr name="indicatorType" format="enum">
+            <enum name="determinate" value="0"/>
+            <enum name="indeterminate" value="1"/>
+        </attr>
+        <attr name="animationRate" format="integer"/>
+    </declare-styleable>
+
+</resources>

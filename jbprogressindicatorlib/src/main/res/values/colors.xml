@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="default_progress_indicator_background_color">#acceeb</color>
+    <color name="default_progress_indicator_bar_color">#3687ed</color>
+</resources>
