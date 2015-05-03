@@ -392,6 +392,33 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
+  public void setIndicatorType(int type)
+  {
+    try
+    {
+      this.indicatorType = type;
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "setIndicatorType: " + ex.toString());
+    }
+  }
+
+
+  public double getIndicatorType()
+  {
+    try
+    {
+      return this.indicatorType;
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "getIndicatorType: " + ex.toString());
+      return this.indicatorType;
+    }
+  }
+
+
   public void stopProgressIndicator()
   {
     try

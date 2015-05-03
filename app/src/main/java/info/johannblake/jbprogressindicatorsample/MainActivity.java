@@ -100,12 +100,20 @@ public class MainActivity extends ActionBarActivity
     {
       case R.id.rbDeterminate:
         if (checked)
+        {
           this.indicatorType = JBProgressIndicator.IndicatorTypes.DETERMINATE;
+          llPercentButtons.setVisibility(View.VISIBLE);
+          this.progressIndicator.setIndicatorType(JBProgressIndicator.IndicatorTypes.DETERMINATE.getValue());
+        }
         break;
 
       case R.id.rbIndeterminate:
         if (checked)
+        {
           this.indicatorType = JBProgressIndicator.IndicatorTypes.INDETERMINATE;
+          llPercentButtons.setVisibility(View.GONE);
+          this.progressIndicator.setIndicatorType(JBProgressIndicator.IndicatorTypes.INDETERMINATE.getValue());
+        }
         break;
     }
   }

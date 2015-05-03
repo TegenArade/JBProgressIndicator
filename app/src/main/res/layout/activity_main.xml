@@ -63,6 +63,7 @@
         android:id="@+id/tvAnimationRate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="20dp"
         android:layout_below="@id/tbShowHide"
         android:text="@string/animation_rate"/>
 
@@ -80,7 +81,7 @@
         android:id="@+id/llPercentButtons"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/rgProgressTypes"
+        android:layout_below="@id/tvAnimationRate"
         android:layout_marginBottom="20dp">
 
         <Button
