@@ -133,7 +133,7 @@
     <info.johannblake.widgets.JBProgressIndicator
         android:id="@+id/jbProgressIndicator"
         android:layout_width="fill_parent"
-        android:layout_height="10dp"
+        android:layout_height="2dp"
         android:layout_alignParentBottom="true"
         android:visibility="visible"
         jb:animationRate="1500000"
