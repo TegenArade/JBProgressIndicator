@@ -57,7 +57,7 @@ import java.util.UUID;
 public class JBProgressIndicator extends RelativeLayout
 {
   private final int DEFAULT_ANIMATION_RATE = 500000; // nanoseconds.
-  private final int DEFAULT_ANIMATION_RATE_INDETERMINATE = 1000;
+  private final int DEFAULT_ANIMATION_RATE_INDETERMINATE = 500;
   private final String TAG_BAR1 = "jbprogressindicator_bar1";
   private final String TAG_BAR2 = "jbprogressindicator_bar2";
   private final String TAG_BAR3 = "jbprogressindicator_bar3";
@@ -74,13 +74,13 @@ public class JBProgressIndicator extends RelativeLayout
   private LinearLayout llBar1;
   private LinearLayout llBar2;
   private LinearLayout llBar3;
-  private Animator animatorSetBar2;
-  private Animator animatorSetBar3;
+//  private Animator animatorSetBar2;
+//  private Animator animatorSetBar3;
   private int ctlWidth;
   private boolean ctlInitialized;
   private Random random = new Random();
-  private float bar2StartPercent;
-  private float bar3StartPercent;
+//  private float bar2StartPercent;
+//  private float bar3StartPercent;
   private ObjectAnimator objAnimBar2;
   private ObjectAnimator objAnimBar3;
 
@@ -239,7 +239,10 @@ public class JBProgressIndicator extends RelativeLayout
   {
     try
     {
-      final float PERCENT_INCREASE = 1.4f;
+      this.objAnimBar2 = createIndeterminateModeAnimation(this.llBar2, this.ctlWidth * 1.4f, 1.4f, bar3Runnable);
+      this.objAnimBar3 = createIndeterminateModeAnimation(this.llBar3, this.ctlWidth * .77f, .2f, bar2Runnable);
+
+/*      final float PERCENT_INCREASE = 1.4f;
 
       PropertyValuesHolder pvhXBar2 = PropertyValuesHolder.ofFloat("x", -this.llBar2.getWidth(), this.ctlWidth * PERCENT_INCREASE);
 
@@ -320,7 +323,7 @@ public class JBProgressIndicator extends RelativeLayout
 
       this.animatorSetBar3 = new AnimatorSet();
       this.animatorSetBar3.setDuration(DEFAULT_ANIMATION_RATE_INDETERMINATE);
-      ((AnimatorSet) this.animatorSetBar3).play(this.objAnimBar3);
+      ((AnimatorSet) this.animatorSetBar3).play(this.objAnimBar3);*/
 
       post(bar2Runnable);
 
@@ -328,6 +331,64 @@ public class JBProgressIndicator extends RelativeLayout
     catch (Exception ex)
     {
       Log.e(LOG_TAG, "runIndeterminateMode: " + ex.toString());
+    }
+  }
+
+
+  private ObjectAnimator createIndeterminateModeAnimation(LinearLayout llBar, float finalWidth, final float widthChange, final Runnable runnableNextAnim)
+  {
+    try
+    {
+      PropertyValuesHolder pvhXBar = PropertyValuesHolder.ofFloat("x", -llBar.getWidth(), finalWidth);
+
+      Keyframe kf0Bar = Keyframe.ofFloat(0f, 1f);
+      Keyframe kf1Bar = Keyframe.ofFloat(.5f, widthChange);
+      PropertyValuesHolder pvhScaleXBar2 = PropertyValuesHolder.ofKeyframe("scaleX", kf0Bar, kf1Bar);
+      ObjectAnimator objAnim1 = ObjectAnimator.ofPropertyValuesHolder(llBar, pvhScaleXBar2, pvhXBar);
+      objAnim1.setInterpolator(new LinearInterpolator());
+      objAnim1.setDuration(DEFAULT_ANIMATION_RATE_INDETERMINATE);
+
+      objAnim1.addUpdateListener(new ValueAnimator.AnimatorUpdateListener()
+      {
+        float nextAnimStartThreshold = getStartingPercent();
+
+        @Override
+        public void onAnimationUpdate(ValueAnimator animation)
+        {
+          try
+          {
+            long elapsedTime = animation.getCurrentPlayTime();
+            long totalDuration = animation.getDuration();
+
+            if ((float) elapsedTime / (float) totalDuration > nextAnimStartThreshold)
+            {
+              ObjectAnimator animator;
+
+              if (runnableNextAnim == bar2Runnable)
+                animator = objAnimBar2;
+              else
+                animator = objAnimBar3;
+
+              if (!animator.isStarted())
+              {
+                nextAnimStartThreshold = getStartingPercent();
+                post(runnableNextAnim);
+              }
+            }
+          }
+          catch (Exception ex)
+          {
+            Log.e(LOG_TAG, "createIndeterminateModeAnimation.onAnimationUpdate: " + ex.toString());
+          }
+        }
+      });
+
+      return objAnim1;
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "createIndeterminateModeAnimation: " + ex.toString());
+      return null;
     }
   }
 
@@ -414,7 +475,7 @@ public class JBProgressIndicator extends RelativeLayout
     {
       try
       {
-        animatorSetBar2.start();
+        objAnimBar2.start();
       }
       catch (Exception ex)
       {
@@ -431,7 +492,7 @@ public class JBProgressIndicator extends RelativeLayout
     {
       try
       {
-        animatorSetBar3.start();
+        objAnimBar3.start();
       }
       catch (Exception ex)
       {
