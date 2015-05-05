@@ -570,6 +570,7 @@ public class JBProgressIndicator extends RelativeLayout
 
       if (show)
       {
+        setVisibility(View.VISIBLE);
         anim = ObjectAnimator.ofFloat(this, "scaleY", 0, 1);
         startAnimationThread();
       }

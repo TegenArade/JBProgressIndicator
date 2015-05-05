@@ -22,7 +22,7 @@ The JBProgressIndicator follows the design pattern specified at:
 
 ### Demo & Integration
 
-To try out the widget, just install the demo app *JBProgressIndicator-Demo-1.0.apk* located in the root directory. The source code for the widget is located under the folder *jbprogressindicatorlib*. If you don't want to bother downloading and compiling the library, you can download the compiled version, *jbprogressindicator-1.0.aar*, located in the root directory.
+To try out the widget, just install the demo app *JBProgressIndicator-Demo-x.x.x.apk* located in the root directory. The source code for the widget is located under the folder *jbprogressindicatorlib*. If you don't want to bother downloading and compiling the library, you can download the compiled version, *jbprogressindicator-x.x.x.aar*, located in the root directory.
 
 ### Usage
 
