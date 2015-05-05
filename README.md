@@ -20,6 +20,10 @@ Watch a video demonstrating the control (Select resolution 720 and watch in Thea
 The JBProgressIndicator follows the design pattern specified at:
 [http://www.google.com/design/spec/components/progress-activity.html#progress-activity-types-of-indicators](http://www.google.com/design/spec/components/progress-activity.html#progress-activity-types-of-indicators)
 
+### Demo & Integration
+
+To try out the widget, just install the demo app *JBProgressIndicator-Demo-1.0.apk* located in the root directory. The source code for the widget is located under the folder *jbprogressindicatorlib*. If you don't want to bother downloading and compiling the library, you can download the compiled version, *jbprogressindicator-1.0.aar*, located in the root directory.
+
 ### Usage
 
 The following is an example of how to integrate the control in your layout:
