@@ -3,18 +3,14 @@
                 xmlns:tools="http://schemas.android.com/tools"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:paddingBottom="@dimen/activity_vertical_margin"
-                android:paddingLeft="@dimen/activity_horizontal_margin"
-                android:paddingRight="@dimen/activity_horizontal_margin"
-                android:paddingTop="@dimen/activity_vertical_margin"
+                android:padding="10dp"
                 tools:context=".MainActivity">
 
     <TextView
         android:id="@+id/tvProgressType"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
-        android:layout_marginRight="10dp"
+        android:layout_marginBottom="10dp"
         android:paddingTop="5dp"
         android:text="Progress Type:"
         android:textSize="16sp"/>
@@ -24,27 +20,26 @@
         android:id="@+id/rgProgressTypes"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignTop="@id/tvProgressType"
-        android:layout_marginBottom="20dp"
-        android:layout_toRightOf="@id/tvProgressType"
-        android:orientation="horizontal">
-
-        <RadioButton
-            android:id="@+id/rbDeterminate"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginRight="20dp"
-            android:checked="true"
-            android:onClick="onRadioButtonClicked"
-            android:text="Determinate"/>
+        android:layout_below="@id/tvProgressType"
+        android:layout_marginBottom="30dp"
+        android:layout_marginLeft="40dp"
+        android:orientation="vertical">
 
         <RadioButton
             android:id="@+id/rbIndeterminate"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:checked="false"
+            android:checked="true"
             android:onClick="onRadioButtonClicked"
             android:text="Indeterminate"/>
+
+        <RadioButton
+            android:id="@+id/rbDeterminate"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="false"
+            android:onClick="onRadioButtonClicked"
+            android:text="Determinate"/>
 
     </RadioGroup>
 
@@ -54,40 +49,72 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/rgProgressTypes"
         android:layout_marginBottom="20dp"
+        android:layout_marginRight="20dp"
         android:checked="true"
         android:onClick="onShowHideProgressIndicatorChange"
         android:textOff="@string/invisible"
         android:textOn="@string/visible"/>
 
+    <ToggleButton
+        android:id="@+id/tbIndeterminateModeAnimationDirection"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/rgProgressTypes"
+        android:layout_marginBottom="20dp"
+        android:layout_toRightOf="@id/tbShowHide"
+        android:checked="false"
+        android:onClick="onChangeIndeterminateModeDirection"
+        android:textOff="@string/left_to_right"
+        android:textOn="@string/right_to_left"/>
+
     <TextView
         android:id="@+id/tvAnimationRate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="20dp"
         android:layout_below="@id/tbShowHide"
         android:text="@string/animation_rate"/>
 
-    <SeekBar
-        android:id="@+id/sbAnimationRate"
+    <LinearLayout
+        android:id="@+id/llAnimationRate"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/tbShowHide"
         android:layout_toRightOf="@id/tvAnimationRate"
-        android:max="3000000"
-        android:minWidth="300dp"
-        android:progress="1500000"/>
+        android:layout_marginBottom="20dp"
+        android:orientation="horizontal">
 
-    <RelativeLayout
+        <SeekBar
+            android:id="@+id/sbAnimationRateIndeterminateMode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:max="100"
+            android:minWidth="300dp"/>
+
+        <SeekBar
+            android:id="@+id/sbAnimationRateDeterminateMode"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:max="3000000"
+            android:minWidth="300dp"
+            android:visibility="invisible"/>
+
+    </LinearLayout>
+
+    <LinearLayout
         android:id="@+id/llPercentButtons"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_below="@id/tvAnimationRate"
-        android:layout_marginBottom="20dp">
+        android:layout_below="@id/llAnimationRate"
+        android:layout_marginBottom="20dp"
+        android:orientation="horizontal"
+        android:visibility="invisible">
 
         <Button
             android:id="@+id/btnSetTo0"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:maxWidth="23dp"
             android:onClick="setPercent"
             android:tag="0"
             android:text="@string/set_to_0_percent"/>
@@ -96,7 +123,9 @@
             android:id="@+id/btnSetTo25"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:layout_toRightOf="@id/btnSetTo0"
+            android:maxWidth="23dp"
             android:onClick="setPercent"
             android:tag="25"
             android:text="@string/set_to_25_percent"/>
@@ -105,7 +134,9 @@
             android:id="@+id/btnSetTo50"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:layout_toRightOf="@id/btnSetTo25"
+            android:maxWidth="23dp"
             android:onClick="setPercent"
             android:tag="50"
             android:text="@string/set_to_50_percent"/>
@@ -114,7 +145,9 @@
             android:id="@+id/btnSetTo75"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:layout_toRightOf="@id/btnSetTo50"
+            android:maxWidth="23dp"
             android:onClick="setPercent"
             android:tag="75"
             android:text="@string/set_to_75_percent"/>
@@ -123,12 +156,14 @@
             android:id="@+id/btnSetTo100"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:layout_toRightOf="@id/btnSetTo75"
+            android:maxWidth="23dp"
             android:onClick="setPercent"
             android:tag="100"
             android:text="@string/set_to_100_percent"/>
 
-    </RelativeLayout>
+    </LinearLayout>
 
     <info.johannblake.widgets.JBProgressIndicator
         android:id="@+id/jbProgressIndicator"
@@ -136,7 +171,9 @@
         android:layout_height="2dp"
         android:layout_alignParentBottom="true"
         android:visibility="visible"
-        jb:animationRate="1500000"
-        jb:indicatorType="determinate"/>
+        jb:animationRateDeterminateMode="1.5"
+        jb:animationRateIndeterminateMode="800"
+        jb:indeterminateModeRTL="false"
+        jb:indicatorType="indeterminate"/>
 
 </RelativeLayout>

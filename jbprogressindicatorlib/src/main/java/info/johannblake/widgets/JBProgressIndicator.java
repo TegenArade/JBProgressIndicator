@@ -27,8 +27,6 @@
 
 package info.johannblake.widgets;
 
-import android.animation.Animator;
-import android.animation.AnimatorSet;
 import android.animation.Keyframe;
 import android.animation.ObjectAnimator;
 import android.animation.PropertyValuesHolder;
@@ -40,6 +38,7 @@ import android.graphics.drawable.ColorDrawable;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewTreeObserver;
 import android.view.animation.LinearInterpolator;
 import android.widget.LinearLayout;
 import android.widget.RelativeLayout;
@@ -50,39 +49,37 @@ import java.util.UUID;
 
 /**
  * A progress indicator that conforms to Material Design. It currently supports indeterminate and determinate modes.
+ *  <p/>
+ * Source code can be downloaded at:<br/>
+ * <a href='https://github.com/JohannBlake/JBProgressIndicator'>https://github.com/JohannBlake/JBProgressIndicator</a>
  * <p/>
- * For further information on Material Design progress indicators, see
- * http://www.google.com/design/spec/components/progress-activity.html#progress-activity-types-of-indicators
+ * For further information on Material Design progress indicators, see:<br/>
+ * <a href='http://www.google.com/design/spec/components/progress-activity.html#progress-activity-types-of-indicators'>http://www.google.com/design/spec/components/progress-activity.html#progress-activity-types-of-indicators</a>
  */
 public class JBProgressIndicator extends RelativeLayout
 {
-  private final int DEFAULT_ANIMATION_RATE = 500000; // nanoseconds.
-  private final int DEFAULT_ANIMATION_RATE_INDETERMINATE = 500;
-  private final String TAG_BAR1 = "jbprogressindicator_bar1";
-  private final String TAG_BAR2 = "jbprogressindicator_bar2";
-  private final String TAG_BAR3 = "jbprogressindicator_bar3";
+  private final float ANIMATION_RATE_DETERMINATE_MODE = 1.5f; // milliseconds.
+  private final int ANIMATION_RATE_INDETERMINATE_MODE = 800; // milliseconds.
 
   private final String LOG_TAG = "JBProgressIndicator";
   private Context context;
   private Integer animatedBarColor;
   private int indicatorType;
-  private int animationRate;
+  private float animationRateDeterminateMode;
+  private int animationRateIndeterminateMode;
   private Thread threadAnimate;
   private int bgColor;
   private int animationRateMilliseconds;
-  private int animationRateNanoseconds = DEFAULT_ANIMATION_RATE;
+  private int animationRateNanoseconds;
   private LinearLayout llBar1;
   private LinearLayout llBar2;
   private LinearLayout llBar3;
-//  private Animator animatorSetBar2;
-//  private Animator animatorSetBar3;
-  private int ctlWidth;
   private boolean ctlInitialized;
   private Random random = new Random();
-//  private float bar2StartPercent;
-//  private float bar3StartPercent;
   private ObjectAnimator objAnimBar2;
   private ObjectAnimator objAnimBar3;
+  private float bar2StartThreshold = getStartingPercent();
+  private float bar3StartThreshold = getStartingPercent();
 
   private int determinateBarWidth;
   private boolean terminateProgress;
@@ -90,6 +87,8 @@ public class JBProgressIndicator extends RelativeLayout
   private double determinateValue;
   private double determinateModeMaxValue = 100;
   private double determinateModeMinValue = 0;
+
+  private boolean indeterminateModeRTL;
 
 
   public enum IndicatorTypes
@@ -148,14 +147,104 @@ public class JBProgressIndicator extends RelativeLayout
       else
         this.animatedBarColor = getResources().getColor(R.color.default_progress_indicator_bar_color);
 
-      // Get the animation rate.
-      this.animationRate = a.getInt(R.styleable.JBProgressIndicator_animationRate, DEFAULT_ANIMATION_RATE);
+      // Get the direction of animation for indeterminate mode.
+      this.indeterminateModeRTL = a.getBoolean(R.styleable.JBProgressIndicator_indeterminateModeRTL, false);
+
+      // Get the animation rate for determinate mode.
+      this.animationRateDeterminateMode = a.getFloat(R.styleable.JBProgressIndicator_animationRateDeterminateMode, ANIMATION_RATE_DETERMINATE_MODE);
+
+      setAnimationRateDeterminateMode(this.animationRateDeterminateMode);
+
+      // Get the animation rate for indeterminate mode.
+      this.animationRateIndeterminateMode = a.getInt(R.styleable.JBProgressIndicator_animationRateIndeterminateMode, ANIMATION_RATE_INDETERMINATE_MODE);
 
       a.recycle();
+
+      getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener()
+      {
+        @Override
+        public void onGlobalLayout()
+        {
+          try
+          {
+            // Initialize the control in the onGlobalLayout because this is the only reliable place where the
+            // properties of the controls like width become active for the first time.
+            if (!ctlInitialized)
+            {
+              if (getWidth() == 0)
+                return;
+
+              addControls();
+
+              ctlInitialized = true;
+            }
+
+            // If the control is visible, then start the animation thread.
+            if (ctlInitialized && (getVisibility() == View.VISIBLE) && (llBar2.getWidth() > 0))
+            {
+              startAnimationThread();
+              getViewTreeObserver().removeOnGlobalLayoutListener(this);
+            }
+          }
+          catch (Exception ex)
+          {
+            Log.e(LOG_TAG, "onGlobalLayout: " + ex.toString());
+          }
+        }
+      });
+
     }
     catch (Exception ex)
     {
-      Log.e(LOG_TAG, "onFinishInflate: " + ex.toString());
+      Log.e(LOG_TAG, "constructor: " + ex.toString());
+    }
+  }
+
+  /**
+   * Adds layouts to handle the bars that get animated.
+   */
+  private void addControls()
+  {
+    try
+    {
+      this.llBar1 = createDeterminateBar();
+      this.llBar2 = createIndeterminateBar(.5f);
+      this.llBar3 = createIndeterminateBar(.6f);
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "addControls: " + ex.toString());
+    }
+  }
+
+
+  /**
+   * Creates bars that will get animated in indeterminate mode.
+   * @param widthScaleFactor The scale factor to use when creating the bar's initial width. The
+   *                         width of the bar is the width of the progress indicator control
+   *                         multiplied by this scale factor.
+   * @return The view representing the bar is returned.
+   */
+  private LinearLayout createIndeterminateBar(float widthScaleFactor)
+  {
+    try
+    {
+      LinearLayout llBar = new LinearLayout(context);
+      int barWidth = (int) (getWidth() * widthScaleFactor);
+      LayoutParams loParams = new LayoutParams(barWidth, LayoutParams.MATCH_PARENT);
+      llBar.setLayoutParams(loParams);
+      llBar.setBackgroundColor(animatedBarColor);
+      llBar.setX(this.indeterminateModeRTL ? getWidth() : -barWidth);
+      llBar.setVisibility(View.VISIBLE);
+
+      addView(llBar);
+
+      return  llBar;
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "createIndeterminateBar: " + ex.toString());
+      return null;
     }
   }
 
@@ -167,41 +256,18 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
-  @Override
-  protected void onFinishInflate()
-  {
-    super.onFinishInflate();
-
-    try
-    {
-/*      this.llBar1 = createBar();
-
-      this.llBar2 = new LinearLayout(context);
-      LayoutParams loParams = new LayoutParams(getWidth(), LayoutParams.MATCH_PARENT);
-      this.llBar2.setLayoutParams(loParams);
-      this.llBar2.setBackgroundColor(animatedBarColor);
-      this.llBar2.setTag(TAG_BAR2);
-      this.llBar2.setVisibility(View.VISIBLE);
-
-      addView(this.llBar2);*/
-    }
-    catch (Exception ex)
-    {
-      Log.e(LOG_TAG, "onFinishInflate: " + ex.toString());
-    }
-  }
-
-
-  private LinearLayout createBar()
+  /**
+   * Creates the bar that is used in determinate mode.
+   * @return The view representing the bar is returned.
+   */
+  private LinearLayout createDeterminateBar()
   {
     try
     {
-
       LinearLayout llBar = new LinearLayout(context);
       LayoutParams loParams = new LayoutParams(0, LayoutParams.MATCH_PARENT);
       llBar.setLayoutParams(loParams);
       llBar.setBackgroundColor(animatedBarColor);
-      llBar.setTag(TAG_BAR1);
 
       addView(llBar);
 
@@ -209,12 +275,16 @@ public class JBProgressIndicator extends RelativeLayout
     }
     catch (Exception ex)
     {
-      Log.e(LOG_TAG, "createBar: " + ex.toString());
+      Log.e(LOG_TAG, "createDeterminateBar: " + ex.toString());
       return new LinearLayout(context);
     }
   }
 
 
+  /**
+   * The runnable used to start an animation. The animation will show either a determinate mode
+   * progress indicator or an indetermine indicator.
+   */
   private class AnimateIndicatorRunnable implements Runnable
   {
     @Override
@@ -235,24 +305,16 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
+  /**
+   * Runs the indeterminate mode showing the indicator.
+   */
   private void runIndeterminateMode()
   {
     try
     {
-      this.objAnimBar2 = createIndeterminateModeAnimation(this.llBar2, this.ctlWidth * 1.4f, 1.4f, bar3Runnable);
-      this.objAnimBar3 = createIndeterminateModeAnimation(this.llBar3, this.ctlWidth * .77f, .2f, bar2Runnable);
-
-/*      final float PERCENT_INCREASE = 1.4f;
-
-      PropertyValuesHolder pvhXBar2 = PropertyValuesHolder.ofFloat("x", -this.llBar2.getWidth(), this.ctlWidth * PERCENT_INCREASE);
-
-      Keyframe kf0Bar2 = Keyframe.ofFloat(0f, 1f);
-      Keyframe kf1Bar2 = Keyframe.ofFloat(.5f, PERCENT_INCREASE);
-      PropertyValuesHolder pvhScaleXBar2 = PropertyValuesHolder.ofKeyframe("scaleX", kf0Bar2, kf1Bar2);
-      this.objAnimBar2 = ObjectAnimator.ofPropertyValuesHolder(this.llBar2, pvhScaleXBar2, pvhXBar2);
-      this.objAnimBar2.setInterpolator(new LinearInterpolator());
-
-      this.bar2StartPercent = getStartingPercent();
+      // Animate the first bar and once the bar reaches a random point along the x axis, start the
+      // second bar animation.
+      this.objAnimBar2 = createIndeterminateModeAnimation(this.llBar2, 1.4f);
 
       this.objAnimBar2.addUpdateListener(new ValueAnimator.AnimatorUpdateListener()
       {
@@ -261,39 +323,29 @@ public class JBProgressIndicator extends RelativeLayout
         {
           try
           {
+            if (terminateProgress)
+              return;
+
             long elapsedTime = animation.getCurrentPlayTime();
             long totalDuration = animation.getDuration();
 
-            if ((float) elapsedTime / (float) totalDuration > bar2StartPercent)
+            if ((float) elapsedTime / (float) totalDuration > bar2StartThreshold)
             {
-              if (!animatorSetBar3.isStarted())
+              if (!objAnimBar3.isStarted())
               {
-                bar3StartPercent = getStartingPercent();
-                post(bar3Runnable);
+                bar3StartThreshold = getStartingPercent();
+                post(bar3AnimationRunnable);
               }
             }
           }
           catch (Exception ex)
           {
-            Log.e(LOG_TAG, "runIndeterminateMode.objAnimBar2.onAnimationUpdate: " + ex.toString());
+            Log.e(LOG_TAG, "runIndeterminateMode.onAnimationUpdate(Bar2): " + ex.toString());
           }
         }
       });
 
-      this.animatorSetBar2 = new AnimatorSet();
-      this.animatorSetBar2.setDuration(DEFAULT_ANIMATION_RATE_INDETERMINATE);
-      ((AnimatorSet) this.animatorSetBar2).play(this.objAnimBar2);
-
-
-      final float PERCENT_DECREASE = .2f;
-
-      PropertyValuesHolder pvhXBar3 = PropertyValuesHolder.ofFloat("x", -this.llBar3.getWidth(), this.ctlWidth * .77f);
-
-      Keyframe kf0Bar3 = Keyframe.ofFloat(0f, 1f);
-      Keyframe kf1Bar3 = Keyframe.ofFloat(.5f, PERCENT_DECREASE);
-      PropertyValuesHolder pvhScaleXBar3 = PropertyValuesHolder.ofKeyframe("scaleX", kf0Bar3, kf1Bar3);
-      this.objAnimBar3 = ObjectAnimator.ofPropertyValuesHolder(this.llBar3, pvhScaleXBar3, pvhXBar3); //.setDuration(2000);
-      this.objAnimBar3.setInterpolator(new LinearInterpolator());
+      this.objAnimBar3 = createIndeterminateModeAnimation(this.llBar3, .2f);
 
       this.objAnimBar3.addUpdateListener(new ValueAnimator.AnimatorUpdateListener()
       {
@@ -302,31 +354,30 @@ public class JBProgressIndicator extends RelativeLayout
         {
           try
           {
+            if (terminateProgress)
+              return;
+
             long elapsedTime = animation.getCurrentPlayTime();
             long totalDuration = animation.getDuration();
 
-            if ((float) elapsedTime / (float) totalDuration > bar3StartPercent)
+            if ((float) elapsedTime / (float) totalDuration > bar3StartThreshold)
             {
-              if (!animatorSetBar2.isStarted())
+              if (!objAnimBar2.isStarted())
               {
-                bar2StartPercent = getStartingPercent();
-                post(bar2Runnable);
+                bar2StartThreshold = getStartingPercent();
+                post(bar2AnimationRunnable);
               }
             }
           }
           catch (Exception ex)
           {
-            Log.e(LOG_TAG, "runIndeterminateMode.objAnimBar3.onAnimationUpdate: " + ex.toString());
+            Log.e(LOG_TAG, "runIndeterminateMode.onAnimationUpdate(Bar3): " + ex.toString());
           }
         }
       });
 
-      this.animatorSetBar3 = new AnimatorSet();
-      this.animatorSetBar3.setDuration(DEFAULT_ANIMATION_RATE_INDETERMINATE);
-      ((AnimatorSet) this.animatorSetBar3).play(this.objAnimBar3);*/
-
-      post(bar2Runnable);
-
+      // Start the animation by animating the first bar.
+      post(bar2AnimationRunnable);
     }
     catch (Exception ex)
     {
@@ -335,53 +386,38 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
-  private ObjectAnimator createIndeterminateModeAnimation(LinearLayout llBar, float finalWidth, final float widthChange, final Runnable runnableNextAnim)
+  /**
+   * Creates an animation for a bar in indeterminate mode.
+   * @param llBar The bar that will be animated.
+   * @param widthChange The scale factor that the bar will scale to during the second half of its animation.
+   * @return The animation object for the bar is returned.
+   */
+  private ObjectAnimator createIndeterminateModeAnimation(LinearLayout llBar, final float widthChange)
   {
     try
     {
-      PropertyValuesHolder pvhXBar = PropertyValuesHolder.ofFloat("x", -llBar.getWidth(), finalWidth);
+      int w = llBar.getWidth();
+      PropertyValuesHolder pvhXBar;
+
+      if (this.indeterminateModeIsRTL())
+        if (widthChange < 1)
+          pvhXBar = PropertyValuesHolder.ofFloat("x", getWidth(), -w);
+        else
+          pvhXBar = PropertyValuesHolder.ofFloat("x", getWidth(), -(w * widthChange));
+      else
+      {
+        if (widthChange < 1)
+          pvhXBar = PropertyValuesHolder.ofFloat("x", -w, getWidth());
+        else
+          pvhXBar = PropertyValuesHolder.ofFloat("x", -w, getWidth() * widthChange);
+      }
 
       Keyframe kf0Bar = Keyframe.ofFloat(0f, 1f);
       Keyframe kf1Bar = Keyframe.ofFloat(.5f, widthChange);
       PropertyValuesHolder pvhScaleXBar2 = PropertyValuesHolder.ofKeyframe("scaleX", kf0Bar, kf1Bar);
       ObjectAnimator objAnim1 = ObjectAnimator.ofPropertyValuesHolder(llBar, pvhScaleXBar2, pvhXBar);
       objAnim1.setInterpolator(new LinearInterpolator());
-      objAnim1.setDuration(DEFAULT_ANIMATION_RATE_INDETERMINATE);
-
-      objAnim1.addUpdateListener(new ValueAnimator.AnimatorUpdateListener()
-      {
-        float nextAnimStartThreshold = getStartingPercent();
-
-        @Override
-        public void onAnimationUpdate(ValueAnimator animation)
-        {
-          try
-          {
-            long elapsedTime = animation.getCurrentPlayTime();
-            long totalDuration = animation.getDuration();
-
-            if ((float) elapsedTime / (float) totalDuration > nextAnimStartThreshold)
-            {
-              ObjectAnimator animator;
-
-              if (runnableNextAnim == bar2Runnable)
-                animator = objAnimBar2;
-              else
-                animator = objAnimBar3;
-
-              if (!animator.isStarted())
-              {
-                nextAnimStartThreshold = getStartingPercent();
-                post(runnableNextAnim);
-              }
-            }
-          }
-          catch (Exception ex)
-          {
-            Log.e(LOG_TAG, "createIndeterminateModeAnimation.onAnimationUpdate: " + ex.toString());
-          }
-        }
-      });
+      objAnim1.setDuration(this.animationRateIndeterminateMode);
 
       return objAnim1;
     }
@@ -392,15 +428,24 @@ public class JBProgressIndicator extends RelativeLayout
     }
   }
 
-
+  /**
+   * Returns a random number between 0.5 and 0.9. This represents the percentage of time that must be reached during an
+   * animation before the next bar is animated. 0.5 is 50% of the total animation duration and 0.9 is 90%.
+   * @return Returns a number between 0.5 and 0.9.
+   */
   private float getStartingPercent()
   {
-    final int START_LOWER_THRESHOLD = 60; // 60%
+    final int START_LOWER_THRESHOLD = 50; // 50%
     final int START_UPPER_THRESHOLD = 90; // 90%
 
     return ((float) this.random.nextInt(START_UPPER_THRESHOLD - START_LOWER_THRESHOLD) + START_LOWER_THRESHOLD) / 100f;
   }
 
+
+  /**
+   * Runs the determinate mode displaying a progress indicator that increases or decreases based upon the desired value and
+   * its current location.
+   */
   private void runDeterminateMode()
   {
     try
@@ -415,7 +460,7 @@ public class JBProgressIndicator extends RelativeLayout
           // while the animation is already under way.
           int width = (int) (((this.determinateValue - this.determinateModeMinValue) / (this.determinateModeMaxValue - this.determinateModeMinValue)) * getWidth());
 
-          post(updateBarRunnable);
+          post(updateDeterminateBarRunnable);
 
           if (this.terminateProgress)
             return;
@@ -449,7 +494,10 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
-  private Runnable updateBarRunnable = new Runnable()
+  /**
+   * A runnable that updates the bar in determinate mode. Runs on the UI thread.
+   */
+  private Runnable updateDeterminateBarRunnable = new Runnable()
   {
     @Override
     public void run()
@@ -462,45 +510,58 @@ public class JBProgressIndicator extends RelativeLayout
       }
       catch (Exception ex)
       {
-        Log.e(LOG_TAG, "runDeterminateMode: " + ex.toString());
+        Log.e(LOG_TAG, "updateDeterminateBarRunnable: " + ex.toString());
       }
     }
   };
 
 
-  private Runnable bar2Runnable = new Runnable()
+  /**
+   * Starts the animation for bar2 in indeterminate mode.
+   */
+  private Runnable bar2AnimationRunnable = new Runnable()
   {
     @Override
     public void run()
     {
       try
       {
+        objAnimBar2.cancel();
         objAnimBar2.start();
       }
       catch (Exception ex)
       {
-        Log.e(LOG_TAG, "bar2Runnable: " + ex.toString());
+        Log.e(LOG_TAG, "bar2AnimationRunnable: " + ex.toString());
       }
     }
   };
 
 
-  private Runnable bar3Runnable = new Runnable()
+  /**
+   * Starts the animation for bar3 in indeterminate mode.
+   */
+  private Runnable bar3AnimationRunnable = new Runnable()
   {
     @Override
     public void run()
     {
       try
       {
+        objAnimBar3.cancel();
         objAnimBar3.start();
       }
       catch (Exception ex)
       {
-        Log.e(LOG_TAG, "bar3Runnable: " + ex.toString());
+        Log.e(LOG_TAG, "bar3AnimationRunnable: " + ex.toString());
       }
     }
   };
 
+
+  /**
+   * Shows or hides the progress indicator. The displaying or hiding is done using animation.
+   * @param show Set to true to show the indicator. If set to false, the indicator will be hidden and any currently running animation is terminated.
+   */
   public void showHide(boolean show)
   {
     try
@@ -508,56 +569,113 @@ public class JBProgressIndicator extends RelativeLayout
       ObjectAnimator anim;
 
       if (show)
+      {
         anim = ObjectAnimator.ofFloat(this, "scaleY", 0, 1);
+        startAnimationThread();
+      }
       else
+      {
         anim = ObjectAnimator.ofFloat(this, "scaleY", 1, 0);
+        stopProgressIndicator();
+      }
 
       anim.setDuration(300);
       anim.start();
     }
     catch (Exception ex)
     {
-      Log.e(LOG_TAG, "showHideProgressIndicator: " + ex.toString());
+      Log.e(LOG_TAG, "showHide: " + ex.toString());
     }
   }
 
 
+  /**
+   * A getter to access the bar width in determinate mode.
+   */
   private int getDeterminateBarWidth()
   {
     return this.determinateBarWidth;
   }
 
 
-  public void setAnimationRate(int rate)
+  /**
+   * Set the rate of animation in indeterminate mode. Avoid setting this rate too low as it could prevent the
+   * animation of showing. If indeterminate mode is currently running, the new rate value will take affect
+   * when the next bar get animated.
+   * @param rate The rate in milliseconds.
+   */
+  public void setAnimationRateIndeterminateMode(int rate)
   {
     try
     {
-      this.animationRate = rate;
-
-      this.animationRateMilliseconds = rate / 1000000;
-      this.animationRateNanoseconds = rate % 1000000;
+      this.animationRateIndeterminateMode = rate;
+      objAnimBar2.setDuration(this.animationRateIndeterminateMode);
+      objAnimBar3.setDuration(this.animationRateIndeterminateMode);
     }
     catch (Exception ex)
     {
-      Log.e(LOG_TAG, "setAnimationRate: " + ex.toString());
+      Log.e(LOG_TAG, "setAnimationRateIndeterminateMode: " + ex.toString());
     }
   }
 
 
-  public double getAnimationRate()
+  /**
+   * A getter to access the animation rate in indeterminate mode.
+   */
+  public double getAnimationRateIndeterminateMode()
   {
     try
     {
-      return this.animationRate;
+      return this.animationRateIndeterminateMode;
     }
     catch (Exception ex)
     {
-      Log.e(LOG_TAG, "getAnimationRate: " + ex.toString());
-      return this.DEFAULT_ANIMATION_RATE;
+      Log.e(LOG_TAG, "getAnimationRateIndeterminateMode: " + ex.toString());
+      return this.ANIMATION_RATE_INDETERMINATE_MODE;
     }
   }
 
 
+  /**
+   * Sets the rate of animation in determinate mode. A value of zero causes the progress indicator
+   * to display the determinate value without animating towards it.
+   * @param rate The rate in milliseconds. Fractions can be used.
+   */
+  public void setAnimationRateDeterminateMode(float rate)
+  {
+    try
+    {
+      this.animationRateDeterminateMode = rate;
+
+      this.animationRateMilliseconds = (int) (rate);
+      this.animationRateNanoseconds = (int) ((rate % 1) * 1000000f);
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "setAnimationRateDeterminateMode: " + ex.toString());
+    }
+  }
+
+
+  /**
+   * A getter to return the value of the animation rate for determinate mode.
+   */
+  public float getAnimationRateDeterminateMode()
+  {
+    try
+    {
+      return this.animationRateDeterminateMode;
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "getAnimationRateDeterminateMode: " + ex.toString());
+      return this.ANIMATION_RATE_DETERMINATE_MODE;
+    }
+  }
+
+  /**
+   * Sets the maximum value used in determinate mode that can be displayed. This can be any value.
+   */
   public void setDeterminateModeMaxValue(double maxValue)
   {
     try
@@ -571,6 +689,10 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
+  /**
+   * Returns the maximum value that can be displayed in determinate mode.
+   * @return
+   */
   public double getDeterminateModeMaxValue()
   {
     try
@@ -585,6 +707,10 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
+  /**
+   * Sets the minimum value in determinate mode that can be displayed. This can be any value but needs to be less than
+   * the value set with setDeterminateModeMaxValue.
+   */
   public void setDeterminateModeMinValue(double minValue)
   {
     try
@@ -598,6 +724,9 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
+  /**
+   * Returns the minimum value that can be displayed in determinate mode.
+   */
   public double getDeterminateModeMinValue()
   {
     try
@@ -612,21 +741,81 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
+  /**
+   * Sets the value to display in determinate mode.
+   */
   public void setDeterminateValue(double value)
   {
     try
     {
       this.determinateValue = value;
-      startAnimatorThread();
     }
     catch (Exception ex)
     {
-      Log.e(LOG_TAG, "setValue: " + ex.toString());
+      Log.e(LOG_TAG, "setDeterminateValue: " + ex.toString());
     }
   }
 
 
-  private void startAnimatorThread()
+  /**
+   * Returns the value displayed in determinate mode.
+   */
+  public double getDeterminateValue()
+  {
+    try
+    {
+      return this.determinateValue;
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "getDeterminateValue: " + ex.toString());
+      return this.determinateValue;
+    }
+  }
+
+
+  /**
+   * Sets the direction of animation for indeterminate mode.
+   * @param rtl Set to true to have the animation go from right to left (rtl).
+   */
+  public void setIndeterminateModeDirection(boolean rtl)
+  {
+    try
+    {
+      if (rtl != this.indeterminateModeRTL)
+      {
+        stopProgressIndicator();
+        this.indeterminateModeRTL = rtl;
+        startAnimationThread();
+      }
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "setDeterminateModeDirection: " + ex.toString());
+    }
+  }
+
+
+  /**
+   * Returns true if the direction of indeterminate mode is right to left (rtl)
+   */
+  public boolean indeterminateModeIsRTL()
+  {
+    try
+    {
+      return this.indeterminateModeRTL;
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "indeterminateModeIsRTL: " + ex.toString());
+      return this.indeterminateModeRTL;
+    }
+  }
+
+  /**
+   * Starts the animation thread if the control is visible.
+   */
+  private void startAnimationThread()
   {
     try
     {
@@ -635,31 +824,62 @@ public class JBProgressIndicator extends RelativeLayout
       if (width == 0)
         return;
 
-      if ((this.threadAnimate == null) || ((this.threadAnimate != null) && (this.threadAnimate.getState() == Thread.State.TERMINATED)))
-      {
-        this.terminateProgress = false;
-        this.determinateBarWidth = 0;
+      if (getVisibility() != View.VISIBLE)
+        return;
 
-        this.threadAnimate = new Thread(null, new AnimateIndicatorRunnable(), "AnimateIndicator_" + UUID.randomUUID());
-        this.threadAnimate.start();
-      }
+      new Thread(null, new StartAnimationThreadRunnable(), "StartAnimationThreadRunnable_" + UUID.randomUUID()).start();
+
     }
     catch (Exception ex)
     {
-      Log.e(LOG_TAG, "startDeterminateModeThread: " + ex.toString());
+      Log.e(LOG_TAG, "startAnimationThread: " + ex.toString());
     }
   }
 
 
+  /**
+   * The runnable used to start the animation thread. If the thread is currently running, it will block
+   * until the current thread terminates.
+   */
+  private class StartAnimationThreadRunnable implements Runnable
+  {
+    @Override
+    public void run()
+    {
+      try
+      {
+        while ((threadAnimate != null) && (threadAnimate.getState() != Thread.State.TERMINATED))
+        {
+        }
+
+        terminateProgress = false;
+        determinateBarWidth = 0;
+
+        threadAnimate = new Thread(null, new AnimateIndicatorRunnable(), "AnimateIndicatorRunnable_" + UUID.randomUUID());
+        threadAnimate.start();
+      }
+      catch (Exception ex)
+      {
+        Log.e(LOG_TAG, "StartAnimationThreadRunnable: " + ex.toString());
+      }
+    }
+  }
+
+
+  /**
+   * Set the type of progress indicator to display. This can be either determinate or indeterminate.
+   * @param type Can be either IndicatorTypes.DETERMINATE or IndicatorTypes.INDETERMINATE.
+   */
   public void setIndicatorType(int type)
   {
     try
     {
       if (type != this.indicatorType)
-        this.terminateProgress = true;
-
-      this.indicatorType = type;
-      startAnimatorThread();
+      {
+        stopProgressIndicator();
+        this.indicatorType = type;
+        startAnimationThread();
+      }
     }
     catch (Exception ex)
     {
@@ -668,6 +888,9 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
+  /**
+   * Returns the current progress indicator type.
+   */
   public double getIndicatorType()
   {
     try
@@ -682,11 +905,29 @@ public class JBProgressIndicator extends RelativeLayout
   }
 
 
-  public void stopProgressIndicator()
+  /**
+   * Stops the progress indicator and resets it. If the indicator is in indeterminate mode, animation stops and the animated bars are not shown.
+   * If the indicator is in determinate mode, the bar is also not shown. The animation thread is terminated.
+   */
+  private void stopProgressIndicator()
   {
     try
     {
       this.terminateProgress = true;
+
+      if (this.objAnimBar2 != null)
+      {
+        this.objAnimBar2.cancel();
+        this.objAnimBar2.removeAllUpdateListeners();
+      }
+
+      if (this.objAnimBar3 != null)
+      {
+        this.objAnimBar3.cancel();
+        this.objAnimBar3.removeAllUpdateListeners();
+      }
+
+      resetBars();
     }
     catch (Exception ex)
     {
@@ -694,53 +935,33 @@ public class JBProgressIndicator extends RelativeLayout
     }
   }
 
-
-  @Override
-  public void onWindowFocusChanged(boolean hasFocus)
+  /**
+   * Resets the bars so that they are not shown and are ready for animating from a starting position.
+   */
+  private void resetBars()
   {
-    super.onWindowFocusChanged(hasFocus);
-
     try
     {
-      if (getWidth() == 0)
-        return;
+      RelativeLayout.LayoutParams loParams = (RelativeLayout.LayoutParams) llBar1.getLayoutParams();
+      this.determinateBarWidth = 0;
+      loParams.width = getDeterminateBarWidth();
+      llBar1.setLayoutParams(loParams);
 
-      if (!this.ctlInitialized)
-      {
-        this.ctlWidth = getWidth();
-        this.llBar1 = createBar();
+      int bar2Width = (int) (getWidth() * .5f);
+      LayoutParams loParams2 = new LayoutParams(bar2Width, LayoutParams.MATCH_PARENT);
+      this.llBar2.setLayoutParams(loParams2);
+      this.llBar2.setX(-bar2Width);
+      this.llBar2.setScaleX(1f);
 
-        this.llBar2 = new LinearLayout(context);
-        int bar2Width = (int) (getWidth() * .5f);
-        LayoutParams loParams = new LayoutParams(bar2Width, LayoutParams.MATCH_PARENT);
-        loParams.setMargins(-bar2Width, 0, 0, 0);
-        this.llBar2.setLayoutParams(loParams);
-        this.llBar2.setBackgroundColor(animatedBarColor);
-        this.llBar2.setTag(TAG_BAR2);
-        this.llBar2.setVisibility(View.VISIBLE);
-
-        addView(this.llBar2);
-
-        this.llBar3 = new LinearLayout(context);
-        int bar3Width = (int) (getWidth() * .6f);
-        loParams = new LayoutParams(bar3Width, LayoutParams.MATCH_PARENT);
-        loParams.setMargins(-bar3Width, 0, 0, 0);
-        this.llBar3.setLayoutParams(loParams);
-        this.llBar3.setBackgroundColor(animatedBarColor);
-        this.llBar3.setTag(TAG_BAR3);
-        this.llBar3.setVisibility(View.VISIBLE);
-
-        addView(this.llBar3);
-
-        //this.llBar2.setX(-this.llBar2.getWidth());
-
-        this.ctlInitialized = true;
-      }
-      //startControlThread();
+      int bar3Width = (int) (getWidth() * .6f);
+      LayoutParams loParams3 = new LayoutParams(bar3Width, LayoutParams.MATCH_PARENT);
+      this.llBar3.setLayoutParams(loParams3);
+      this.llBar3.setX(-bar3Width);
+      this.llBar3.setScaleX(1f);
     }
     catch (Exception ex)
     {
-      Log.e(LOG_TAG, "onWindowFocusChanged: " + ex.toString());
+      Log.e(LOG_TAG, "resetBars: " + ex.toString());
     }
   }
 }

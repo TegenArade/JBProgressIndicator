@@ -13,4 +13,6 @@
     <string name="set_to_75_percent">75%</string>
     <string name="set_to_100_percent">100%</string>
     <string name="animation_rate">Rate:</string>
+    <string name="left_to_right">LTR</string>
+    <string name="right_to_left">RTL</string>
 </resources>

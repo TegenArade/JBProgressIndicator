@@ -1,32 +1,27 @@
 package info.johannblake.jbprogressindicatorsample;
 
-import android.animation.ObjectAnimator;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.animation.Animation;
-import android.view.animation.AnimationSet;
-import android.view.animation.LinearInterpolator;
-import android.view.animation.ScaleAnimation;
-import android.view.animation.TranslateAnimation;
+import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.ToggleButton;
 
-import java.util.UUID;
-
 import info.johannblake.widgets.JBProgressIndicator;
 
 
+/**
+ * This the test app test for testing the JBProgressIndicator control.
+ */
 public class MainActivity extends ActionBarActivity
 {
   private final String LOG_TAG = "MainActivity";
 
-  private JBProgressIndicator.IndicatorTypes indicatorType;
   private JBProgressIndicator progressIndicator;
 
   protected void onCreate(Bundle savedInstanceState)
@@ -38,16 +33,28 @@ public class MainActivity extends ActionBarActivity
 
       this.progressIndicator = (JBProgressIndicator) findViewById(R.id.jbProgressIndicator);
 
-      SeekBar sbAnimationRate = (SeekBar) findViewById(R.id.sbAnimationRate);
+      // Set the state of the toggle button to indicate the direction of animation for indeterminate mode.
+      ToggleButton tbIndeterminateModeAnimationDirection = (ToggleButton) findViewById(R.id.tbIndeterminateModeAnimationDirection);
+      tbIndeterminateModeAnimationDirection.setChecked(this.progressIndicator.indeterminateModeIsRTL());
 
-      sbAnimationRate.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
+      // Handle user changing animation rate for indeterminate mode.
+      SeekBar sbAnimationRateIndeterminateMode = (SeekBar) findViewById(R.id.sbAnimationRateIndeterminateMode);
+      int animationRateIndeterminateMode = (int) ((this.progressIndicator.getAnimationRateIndeterminateMode() - 300) / 10);
+      sbAnimationRateIndeterminateMode.setProgress(animationRateIndeterminateMode);
+
+      sbAnimationRateIndeterminateMode.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
       {
         @Override
         public void onProgressChanged(SeekBar seekBar, int rate, boolean fromUser)
         {
           try
           {
-            progressIndicator.setAnimationRate(rate);
+            // Don't set the rate faster than 300 ms, otherwise the animation might crash.
+            // The slider's range 0 to 100 maps to the animation rate of 300 ms to 1300 ms.
+
+            int animRate = (10 * rate) + 300;
+
+            progressIndicator.setAnimationRateIndeterminateMode(animRate);
           }
           catch (Exception ex)
           {
@@ -58,13 +65,43 @@ public class MainActivity extends ActionBarActivity
         @Override
         public void onStartTrackingTouch(SeekBar seekBar)
         {
-
         }
 
         @Override
         public void onStopTrackingTouch(SeekBar seekBar)
         {
+        }
+      });
 
+      // Handle user changing animation rate for determinate mode.
+      SeekBar sbAnimationRateDeterminateMode = (SeekBar) findViewById(R.id.sbAnimationRateDeterminateMode);
+      int animationRateDeterminateMode = (int) (this.progressIndicator.getAnimationRateDeterminateMode() * 1000000f);
+      sbAnimationRateDeterminateMode.setProgress(animationRateDeterminateMode);
+
+      sbAnimationRateDeterminateMode.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener()
+      {
+        @Override
+        public void onProgressChanged(SeekBar seekBar, int rate, boolean fromUser)
+        {
+          try
+          {
+            float animRate = ((float)rate / 1000000f);
+            progressIndicator.setAnimationRateDeterminateMode(animRate);
+          }
+          catch (Exception ex)
+          {
+            Log.e(LOG_TAG, "onProgressChanged: " + ex.toString());
+          }
+        }
+
+        @Override
+        public void onStartTrackingTouch(SeekBar seekBar)
+        {
+        }
+
+        @Override
+        public void onStopTrackingTouch(SeekBar seekBar)
+        {
         }
       });
     }
@@ -90,31 +127,62 @@ public class MainActivity extends ActionBarActivity
 
   public void onRadioButtonClicked(View view)
   {
-    // Is the button now checked?
-    boolean checked = ((RadioButton) view).isChecked();
-
-    RelativeLayout llPercentButtons = (RelativeLayout) findViewById(R.id.llPercentButtons);
-
-    // Check which radio button was clicked
-    switch (view.getId())
+    try
     {
-      case R.id.rbDeterminate:
-        if (checked)
-        {
-          this.indicatorType = JBProgressIndicator.IndicatorTypes.DETERMINATE;
-          llPercentButtons.setVisibility(View.VISIBLE);
-          this.progressIndicator.setIndicatorType(JBProgressIndicator.IndicatorTypes.DETERMINATE.getValue());
-        }
-        break;
+      // Is the button now checked?
+      boolean checked = ((RadioButton) view).isChecked();
 
-      case R.id.rbIndeterminate:
-        if (checked)
-        {
-          this.indicatorType = JBProgressIndicator.IndicatorTypes.INDETERMINATE;
-          llPercentButtons.setVisibility(View.GONE);
-          this.progressIndicator.setIndicatorType(JBProgressIndicator.IndicatorTypes.INDETERMINATE.getValue());
-        }
-        break;
+      LinearLayout llPercentButtons = (LinearLayout) findViewById(R.id.llPercentButtons);
+
+      // Check which radio button was clicked
+      switch (view.getId())
+      {
+        case R.id.rbDeterminate:
+          if (checked)
+          {
+            if (this.progressIndicator.getIndicatorType() != JBProgressIndicator.IndicatorTypes.DETERMINATE.getValue())
+            {
+              // Show the slider for the animation rate for determinate mode.
+              SeekBar sbAnimationRateDeterminateMode = (SeekBar) findViewById(R.id.sbAnimationRateDeterminateMode);
+              sbAnimationRateDeterminateMode.setVisibility(View.VISIBLE);
+
+              SeekBar sbAnimationRateIndeterminateMode = (SeekBar) findViewById(R.id.sbAnimationRateIndeterminateMode);
+              sbAnimationRateIndeterminateMode.setVisibility(View.GONE);
+
+              ToggleButton tbIndeterminateModeAnimationDirection = (ToggleButton) findViewById(R.id.tbIndeterminateModeAnimationDirection);
+              tbIndeterminateModeAnimationDirection.setVisibility(View.INVISIBLE);
+
+              llPercentButtons.setVisibility(View.VISIBLE);
+              this.progressIndicator.setDeterminateValue(0);
+              this.progressIndicator.setIndicatorType(JBProgressIndicator.IndicatorTypes.DETERMINATE.getValue());
+            }
+          }
+          break;
+
+        case R.id.rbIndeterminate:
+          if (checked)
+          {
+            if (this.progressIndicator.getIndicatorType() != JBProgressIndicator.IndicatorTypes.INDETERMINATE.getValue())
+            {
+              SeekBar sbAnimationRateDeterminateMode = (SeekBar) findViewById(R.id.sbAnimationRateDeterminateMode);
+              sbAnimationRateDeterminateMode.setVisibility(View.GONE);
+
+              SeekBar sbAnimationRateIndeterminateMode = (SeekBar) findViewById(R.id.sbAnimationRateIndeterminateMode);
+              sbAnimationRateIndeterminateMode.setVisibility(View.VISIBLE);
+
+              ToggleButton tbIndeterminateModeAnimationDirection = (ToggleButton) findViewById(R.id.tbIndeterminateModeAnimationDirection);
+              tbIndeterminateModeAnimationDirection.setVisibility(View.VISIBLE);
+
+              llPercentButtons.setVisibility(View.GONE);
+              this.progressIndicator.setIndicatorType(JBProgressIndicator.IndicatorTypes.INDETERMINATE.getValue());
+            }
+          }
+          break;
+      }
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "onRadioButtonClicked: " + ex.toString());
     }
   }
 
@@ -126,7 +194,10 @@ public class MainActivity extends ActionBarActivity
       boolean on = ((ToggleButton) v).isChecked();
 
       if (on)
+      {
+        this.progressIndicator.setDeterminateValue(0);
         showHideProgressIndicator(true);
+      }
       else
         showHideProgressIndicator(false);
     }
@@ -146,6 +217,21 @@ public class MainActivity extends ActionBarActivity
     catch (Exception ex)
     {
       Log.e(LOG_TAG, "showHideProgressIndicator: " + ex.toString());
+    }
+  }
+
+
+  public void onChangeIndeterminateModeDirection(View v)
+  {
+    try
+    {
+      boolean rtl = ((ToggleButton) v).isChecked();
+
+      this.progressIndicator.setIndeterminateModeDirection(rtl);
+    }
+    catch (Exception ex)
+    {
+      Log.e(LOG_TAG, "onChangeIndeterminateModeDirection: " + ex.toString());
     }
   }
 

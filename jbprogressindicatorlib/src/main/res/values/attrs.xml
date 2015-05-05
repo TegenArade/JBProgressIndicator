@@ -6,7 +6,9 @@
             <enum name="determinate" value="0"/>
             <enum name="indeterminate" value="1"/>
         </attr>
-        <attr name="animationRate" format="integer"/>
+        <attr name="animationRateDeterminateMode" format="float"/>
+        <attr name="animationRateIndeterminateMode" format="integer"/>
+        <attr name="indeterminateModeRTL" format="boolean"/>
     </declare-styleable>
 
 </resources>
