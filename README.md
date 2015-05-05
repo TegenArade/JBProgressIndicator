@@ -53,6 +53,8 @@ The following is an example of how to integrate the control in your layout:
   Set this to either "determinate" or "indeterminate". If not specified, determinate mode will be used.
 
 
+
+
 **jb:animationRateDeterminateMode**
 
   The rate at which the progress indicator will move from one value to the next. The rate is specified in milliseconds. If not specified, the rate will be set to 800 ms. If the value is set to zero, the progress indicator will change to new values almost instantly. For example, if the progress indicator's scale is from zero to 100 and the current value is zero and then set to 100, the progress indicator will go straight from zero to 100. But if you specify a rate greater than zero, the progress indicator will animate gradually from zero to 100. The smaller the rate, the faster the animation.
