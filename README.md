@@ -1,7 +1,9 @@
 JBProgressIndicator
 ================
 A customizable progress indicator for Android with Material Design.
+
 ![JBProgressIndicator](https://github.com/JohannBlake/JBProgressIndicator/blob/master/app/src/main/res/mipmap-xxhdpi/ic_launcher.png)
+
 Features:
 
 * Determinate and indeterminate modes
