@@ -25,7 +25,7 @@
  * THE SOFTWARE.
  */
 
-package info.johannblake.widgets;
+package info.johannblake.widgets.jbprogressindicatorlib;
 
 import android.animation.Keyframe;
 import android.animation.ObjectAnimator;

@@ -37,7 +37,7 @@ The following is an example of how to integrate the control in your layout:
                 android:padding="10dp"
                 tools:context=".MainActivity">
 
-    <info.johannblake.widgets.JBProgressIndicator
+    <info.johannblake.widgets.jbprogressindicatorlib.JBProgressIndicator
         android:id="@+id/jbProgressIndicator"
         android:layout_width="fill_parent"
         android:layout_height="2dp"

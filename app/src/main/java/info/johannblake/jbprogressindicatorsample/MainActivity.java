@@ -35,11 +35,10 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
-import android.widget.RelativeLayout;
 import android.widget.SeekBar;
 import android.widget.ToggleButton;
 
-import info.johannblake.widgets.JBProgressIndicator;
+import info.johannblake.widgets.jbprogressindicatorlib.JBProgressIndicator;
 
 
 /**
