@@ -48,7 +48,7 @@ import java.util.UUID;
 
 
 /**
- * A progress indicator that conforms to Material Design. It currently supports indeterminate and determinate modes.
+ * A progress indicator that conforms to Material Design. It currently supports indeterminate and determinate modes. Buffer mode is currently not supported.
  *  <p/>
  * Source code can be downloaded at:<br/>
  * <a href='https://github.com/JohannBlake/JBProgressIndicator'>https://github.com/JohannBlake/JBProgressIndicator</a>
