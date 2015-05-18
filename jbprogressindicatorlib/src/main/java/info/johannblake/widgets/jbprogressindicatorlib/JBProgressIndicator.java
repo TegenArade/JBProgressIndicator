@@ -49,7 +49,7 @@ import java.util.UUID;
 
 /**
  * A progress indicator that conforms to Material Design. It currently supports indeterminate and determinate modes. Buffer mode is currently not supported.
- *  <p/>
+ * <p/>
  * Source code can be downloaded at:<br/>
  * <a href='https://github.com/JohannBlake/JBProgressIndicator'>https://github.com/JohannBlake/JBProgressIndicator</a>
  * <p/>
@@ -220,6 +220,7 @@ public class JBProgressIndicator extends RelativeLayout
 
   /**
    * Creates bars that will get animated in indeterminate mode.
+   *
    * @param widthScaleFactor The scale factor to use when creating the bar's initial width. The
    *                         width of the bar is the width of the progress indicator control
    *                         multiplied by this scale factor.
@@ -239,7 +240,7 @@ public class JBProgressIndicator extends RelativeLayout
 
       addView(llBar);
 
-      return  llBar;
+      return llBar;
     }
     catch (Exception ex)
     {
@@ -258,6 +259,7 @@ public class JBProgressIndicator extends RelativeLayout
 
   /**
    * Creates the bar that is used in determinate mode.
+   *
    * @return The view representing the bar is returned.
    */
   private LinearLayout createDeterminateBar()
@@ -388,7 +390,8 @@ public class JBProgressIndicator extends RelativeLayout
 
   /**
    * Creates an animation for a bar in indeterminate mode.
-   * @param llBar The bar that will be animated.
+   *
+   * @param llBar       The bar that will be animated.
    * @param widthChange The scale factor that the bar will scale to during the second half of its animation.
    * @return The animation object for the bar is returned.
    */
@@ -431,6 +434,7 @@ public class JBProgressIndicator extends RelativeLayout
   /**
    * Returns a random number between 0.5 and 0.9. This represents the percentage of time that must be reached during an
    * animation before the next bar is animated. 0.5 is 50% of the total animation duration and 0.9 is 90%.
+   *
    * @return Returns a number between 0.5 and 0.9.
    */
   private float getStartingPercent()
@@ -560,28 +564,37 @@ public class JBProgressIndicator extends RelativeLayout
 
   /**
    * Shows or hides the progress indicator. The displaying or hiding is done using animation.
+   *
    * @param show Set to true to show the indicator. If set to false, the indicator will be hidden and any currently running animation is terminated.
    */
   public void showHide(boolean show)
   {
     try
     {
-      ObjectAnimator anim;
-
       if (show)
       {
         setVisibility(View.VISIBLE);
-        anim = ObjectAnimator.ofFloat(this, "scaleY", 0, 1);
+
+        // Don't animate the indicator into view if it is already showing.
+        if ((threadAnimate == null) || (threadAnimate.getState() == Thread.State.TERMINATED))
+        {
+          ObjectAnimator anim = ObjectAnimator.ofFloat(this, "scaleY", 0, 1);
+          anim.setDuration(300);
+          anim.start();
+        }
+
         startAnimationThread();
       }
       else
       {
-        anim = ObjectAnimator.ofFloat(this, "scaleY", 1, 0);
+        ObjectAnimator anim = ObjectAnimator.ofFloat(this, "scaleY", 1, 0);
         stopProgressIndicator();
+
+        anim.setDuration(300);
+        anim.start();
       }
 
-      anim.setDuration(300);
-      anim.start();
+
     }
     catch (Exception ex)
     {
@@ -603,6 +616,7 @@ public class JBProgressIndicator extends RelativeLayout
    * Set the rate of animation in indeterminate mode. Avoid setting this rate too low as it could prevent the
    * animation of showing. If indeterminate mode is currently running, the new rate value will take affect
    * when the next bar get animated.
+   *
    * @param rate The rate in milliseconds.
    */
   public void setAnimationRateIndeterminateMode(int rate)
@@ -640,6 +654,7 @@ public class JBProgressIndicator extends RelativeLayout
   /**
    * Sets the rate of animation in determinate mode. A value of zero causes the progress indicator
    * to display the determinate value without animating towards it.
+   *
    * @param rate The rate in milliseconds. Fractions can be used.
    */
   public void setAnimationRateDeterminateMode(float rate)
@@ -692,6 +707,7 @@ public class JBProgressIndicator extends RelativeLayout
 
   /**
    * Returns the maximum value that can be displayed in determinate mode.
+   *
    * @return
    */
   public double getDeterminateModeMaxValue()
@@ -777,6 +793,7 @@ public class JBProgressIndicator extends RelativeLayout
 
   /**
    * Sets the direction of animation for indeterminate mode.
+   *
    * @param rtl Set to true to have the animation go from right to left (rtl).
    */
   public void setIndeterminateModeDirection(boolean rtl)
@@ -869,6 +886,7 @@ public class JBProgressIndicator extends RelativeLayout
 
   /**
    * Set the type of progress indicator to display. This can be either determinate or indeterminate.
+   *
    * @param type Can be either IndicatorTypes.DETERMINATE or IndicatorTypes.INDETERMINATE.
    */
   public void setIndicatorType(int type)
