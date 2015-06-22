@@ -47,6 +47,7 @@ import java.util.Random;
 import java.util.UUID;
 
 
+
 /**
  * A progress indicator that conforms to Material Design. It currently supports indeterminate and determinate modes. Buffer mode is currently not supported.
  * <p/>
@@ -961,6 +962,9 @@ public class JBProgressIndicator extends RelativeLayout
   {
     try
     {
+      if (llBar1 == null)
+        return;
+
       RelativeLayout.LayoutParams loParams = (RelativeLayout.LayoutParams) llBar1.getLayoutParams();
       this.determinateBarWidth = 0;
       loParams.width = getDeterminateBarWidth();
