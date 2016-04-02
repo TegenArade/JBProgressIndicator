@@ -37,6 +37,7 @@ import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.os.Build;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.animation.LinearInterpolator;
@@ -168,7 +169,11 @@ public class JBProgressIndicator extends RelativeLayout {
                 // If the control is visible, then start the animation thread.
                 if (mCtlInitialized && (getVisibility() == View.VISIBLE) && (mLLBar2.getWidth() > 0)) {
                     startAnimationThread();
-                    getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.JELLY_BEAN) {
+                        getViewTreeObserver().removeGlobalOnLayoutListener(this);
+                    } else {
+                        getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    }
                 }
             }
         });
